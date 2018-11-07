@@ -50,7 +50,7 @@ class MainWindow(QDialog):
             self.ui.text_label.setText(self.music_file_path)
 
             # 生成节拍序列，存储在csv文件里
-            #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
             self.load_csv()
 
             self.player.play()
@@ -126,7 +126,7 @@ class MainWindow(QDialog):
 
     def move_blocks(self):
         for i, _ in enumerate(self.blocks):
-            for j,_ in enumerate(self.blocks[i]):
+            for j, _ in enumerate(self.blocks[i]):
                 self.blocks[i][j] += 5
 
             while self.blocks[i] and (self.blocks[i][0] > self.height):
