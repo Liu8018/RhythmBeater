@@ -6,6 +6,7 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import numpy as np
 import cv2
+import random
 
 class MainWindow(QDialog):
     def __init__(self):
@@ -36,7 +37,7 @@ class MainWindow(QDialog):
         self.start_time = 0.0
         self.played_time = 0.0
 
-        self.block = 0
+        self.blocks = [[],[],[],[]]
 
     @pyqtSlot()
     def on_open_pushButton_clicked(self):
@@ -49,7 +50,7 @@ class MainWindow(QDialog):
             self.ui.text_label.setText(self.music_file_path)
 
             # 生成节拍序列，存储在csv文件里
-            os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
             self.load_csv()
 
             self.player.play()
@@ -74,12 +75,16 @@ class MainWindow(QDialog):
         # 更新played_time
         if self.player_started:
             self.played_time = (cv2.getTickCount() - self.start_time) / cv2.getTickFrequency()
-            if self.played_time > self.beat_times[0]:
+
+            # 若到达节拍点则生成一个block
+            if self.played_time >= self.beat_times[0]:
+                self.generate_block()
                 self.beat_times.pop(0)
 
+            # 移动block
             self.move_blocks()
 
-        # 显示到label上
+        # 显示图片到label上
         self.show_frame()
 
     def show_frame(self):
@@ -89,9 +94,12 @@ class MainWindow(QDialog):
         cv2.line(self.cover, (int(self.width*3/4), 0), (int(self.width*3/4), self.height), (255, 0, 0), 2)
 
         # 画blocks
-        cv2.line(self.cover, (5, self.height - self.block),
-                             (int(self.width / 4) - 5, self.height - self.block),
-                             (0,255,0),8)
+        for i in range(4):
+            if self.blocks[i]:
+                for block in self.blocks[i]:
+                    cv2.line(self.cover, (int(self.width/4*i)+5, self.height - block),
+                                         (int(self.width/4*(i+1))-5, self.height - block),
+                                         (0,255,0),8)
 
         # 叠加显示frame与cover
         self.frame_to_show = cv2.add(self.frame, self.cover)
@@ -111,5 +119,17 @@ class MainWindow(QDialog):
             for line in file:
                 self.beat_times.append(float(line))
 
+    def generate_block(self):
+        n = random.randint(0,3)
+        self.blocks[n].append(0)
+        pass
+
     def move_blocks(self):
-        self.block = self.block + 2
+        for i, _ in enumerate(self.blocks):
+            for j,_ in enumerate(self.blocks[i]):
+                self.blocks[i][j] += 5
+
+            while self.blocks[i] and (self.blocks[i][0] > self.height):
+                self.blocks[i].pop(0)
+
+            print(self.blocks)
