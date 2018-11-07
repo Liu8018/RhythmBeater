@@ -5,4 +5,4 @@ from mainwindow import MainWindow
 app = QApplication(sys.argv)
 mainwindow = MainWindow()
 mainwindow.show()
-sys.exit(mainwindow.exec())
+sys.exit(app.exec())

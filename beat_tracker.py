@@ -1,29 +1,10 @@
-#!/home/liu/venvs/venv1/bin/python3
-'''
-CREATED:2013-02-11 18:37:30 by Brian McFee <brm2132@columbia.edu>
-
-Track beat events in an audio file
-
-Usage:   ./beat_tracker.py [-h] input_file.mp3    output_beats.csv
-'''
 from __future__ import print_function
 
 import argparse
 import sys
 import librosa
 
-
 def beat_track(input_file, output_csv):
-    '''Beat tracking function
-
-    :parameters:
-      - input_file : str
-          Path to input audio file (wav, mp3, m4a, flac, etc.)
-
-      - output_file : str
-          Path to save beat event timestamps as a CSV file
-    '''
-
     print('Loading ', input_file)
     y, sr = librosa.load(input_file, sr=22050)
 
@@ -34,7 +15,7 @@ def beat_track(input_file, output_csv):
     print('Tracking beats')
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, hop_length=hop_length)
 
-    print('Estimated tempo: {:0.2f} beats per minute'.format(tempo))
+    #print('Estimated tempo: {:0.2f} beats per minute'.format(tempo))
 
     # save output
     # 'beats' will contain the frame numbers of beat events.
@@ -46,8 +27,6 @@ def beat_track(input_file, output_csv):
 
 
 def process_arguments(args):
-    '''Argparse function to get the program parameters'''
-
     parser = argparse.ArgumentParser(description='Beat tracking example')
 
     parser.add_argument('input_file',

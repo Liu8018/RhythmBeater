@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import QDialog, QFileDialog
+from PyQt5.QtWidgets import QDialog, QFileDialog, QProgressDialog
 from ui_mainwindow import Ui_Dialog
 from PyQt5.QtCore import QTimer, pyqtSlot, QUrl
 from PyQt5.QtGui import QImage, QPixmap
@@ -26,49 +26,74 @@ class MainWindow(QDialog):
         self.timer = QTimer(self)
         self.timer.setInterval(1000 / self.capture.get(cv2.CAP_PROP_FPS))
         self.timer.start()
-        self.timer.timeout.connect(self.getFrame)
+        self.timer.timeout.connect(self.get_frame)
 
         self.music_file_path = " "
         self.player = QMediaPlayer()
+        self.player_started = False
+
+        self.beat_times = []
+        self.start_time = 0.0
+        self.played_time = 0.0
+
+        self.block = 0
 
     @pyqtSlot()
     def on_open_pushButton_clicked(self):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        self.music_file_path, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
-                                                  "All Files (*)", options=options)
-        self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.music_file_path)))
-        self.ui.text_label.setText(self.music_file_path)
+        self.music_file_path, _ = QFileDialog.getOpenFileName(self, "打开文件", "",
+                                                  "music file (*.mp3)", options=options)
+        if self.music_file_path:
+            self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.music_file_path)))
+            self.ui.text_label.setText(self.music_file_path)
 
-        os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            # 生成节拍序列，存储在csv文件里
+            #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            self.load_csv()
 
-    @pyqtSlot()
-    def on_start_pushButton_clicked(self):
-        self.player.play()
+            self.player.play()
+            self.player_started = True
 
-    @pyqtSlot()
-    def on_pause_pushButton_clicked(self):
-        self.player.pause()
+            self.start_time = cv2.getTickCount()
+            self.played_time = 0.0
 
     @pyqtSlot()
     def on_exit_pushButton_clicked(self):
+        #os.system("rm beat_times.csv")
         exit(0)
 
     @pyqtSlot()
-    def getFrame(self):
+    def get_frame(self):
         # 读取一帧并左右翻转
         _,self.frame = self.capture.read()
         self.frame = cv2.flip(self.frame, 1)
+
+        self.cover = np.zeros(shape=(self.height, self.width, 3), dtype=np.uint8)
+
+        # 更新played_time
+        if self.player_started:
+            self.played_time = (cv2.getTickCount() - self.start_time) / cv2.getTickFrequency()
+            if self.played_time > self.beat_times[0]:
+                self.beat_times.pop(0)
+
+            self.move_blocks()
 
         # 显示到label上
         self.show_frame()
 
     def show_frame(self):
-        #画线
+        # 画线
         cv2.line(self.cover, (int(self.width / 2), 0), (int(self.width / 2), self.height), (255, 0, 0), 2)
         cv2.line(self.cover, (int(self.width / 4), 0), (int(self.width / 4), self.height), (255, 0, 0), 2)
         cv2.line(self.cover, (int(self.width*3/4), 0), (int(self.width*3/4), self.height), (255, 0, 0), 2)
 
+        # 画blocks
+        cv2.line(self.cover, (5, self.height - self.block),
+                             (int(self.width / 4) - 5, self.height - self.block),
+                             (0,255,0),8)
+
+        # 叠加显示frame与cover
         self.frame_to_show = cv2.add(self.frame, self.cover)
 
         # 调整大小
@@ -80,3 +105,11 @@ class MainWindow(QDialog):
         pixmap = QPixmap.fromImage(qimg)
 
         self.ui.label.setPixmap(pixmap)
+
+    def load_csv(self):
+        with open("beat_times.csv") as file:
+            for line in file:
+                self.beat_times.append(float(line))
+
+    def move_blocks(self):
+        self.block = self.block + 2
