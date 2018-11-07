@@ -3,6 +3,7 @@ from ui_mainwindow import Ui_Dialog
 from PyQt5.QtCore import QTimer, pyqtSlot, QUrl
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+import numpy as np
 import cv2
 
 class MainWindow(QDialog):
@@ -16,7 +17,9 @@ class MainWindow(QDialog):
         # 打开摄像头
         self.capture = cv2.VideoCapture('/dev/video0')
         _, self.frame = self.capture.read()
-        self.frame_to_show = self.frame
+        self.height, self.width, self.bytesPerComponent = self.frame.shape
+        self.frame_to_show = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
+        self.cover = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
 
         # 创建计时器
         self.timer = QTimer(self)
@@ -32,13 +35,17 @@ class MainWindow(QDialog):
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
         self.music_file_path, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
-                                                  "All Files (*);;Python Files (*.py)", options=options)
+                                                  "All Files (*)", options=options)
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.music_file_path)))
-        self.player.play()
+        self.ui.text_label.setText(self.music_file_path)
 
     @pyqtSlot()
     def on_start_pushButton_clicked(self):
-        pass
+        self.player.play()
+
+    @pyqtSlot()
+    def on_pause_pushButton_clicked(self):
+        self.player.pause()
 
     @pyqtSlot()
     def on_exit_pushButton_clicked(self):
@@ -50,16 +57,22 @@ class MainWindow(QDialog):
         _,self.frame = self.capture.read()
         self.frame = cv2.flip(self.frame, 1)
 
-        # 调整大小
-        self.frame = cv2.resize(self.frame, (self.ui.label.width(), self.ui.label.height()))
-
         # 显示到label上
         self.show_frame()
 
     def show_frame(self):
-        height, width, bytesPerComponent = self.frame.shape
+        #画线
+        cv2.line(self.cover, (int(self.width / 2), 0), (int(self.width / 2), self.height), (255, 0, 0), 2)
+        cv2.line(self.cover, (int(self.width / 4), 0), (int(self.width / 4), self.height), (255, 0, 0), 2)
+        cv2.line(self.cover, (int(self.width*3/4), 0), (int(self.width*3/4), self.height), (255, 0, 0), 2)
+
+        self.frame_to_show = cv2.add(self.frame, self.cover)
+
+        # 调整大小
+        self.frame_to_show = cv2.resize(self.frame_to_show, (self.ui.label.width(), self.ui.label.height()))
+        self.frame_to_show = cv2.cvtColor(self.frame_to_show, cv2.COLOR_BGR2RGB)
+        height, width, bytesPerComponent = self.frame_to_show.shape
         bytesPerLine = 3 * width
-        self.frame_to_show = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         qimg = QImage(self.frame_to_show.data, width, height, bytesPerLine, QImage.Format_RGB888)
         pixmap = QPixmap.fromImage(qimg)
 
