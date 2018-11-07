@@ -1,8 +1,8 @@
 from PyQt5.QtWidgets import QDialog, QFileDialog
 from ui_mainwindow import Ui_Dialog
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, pyqtSlot, QUrl
 from PyQt5.QtGui import QImage, QPixmap
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import cv2
 
 class MainWindow(QDialog):
@@ -25,6 +25,7 @@ class MainWindow(QDialog):
         self.timer.timeout.connect(self.getFrame)
 
         self.music_file_path = " "
+        self.player = QMediaPlayer()
 
     @pyqtSlot()
     def on_open_pushButton_clicked(self):
@@ -32,6 +33,8 @@ class MainWindow(QDialog):
         options |= QFileDialog.DontUseNativeDialog
         self.music_file_path, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "",
                                                   "All Files (*);;Python Files (*.py)", options=options)
+        self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.music_file_path)))
+        self.player.play()
 
     @pyqtSlot()
     def on_start_pushButton_clicked(self):
