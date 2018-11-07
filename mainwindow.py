@@ -131,5 +131,3 @@ class MainWindow(QDialog):
 
             while self.blocks[i] and (self.blocks[i][0] > self.height):
                 self.blocks[i].pop(0)
-
-            print(self.blocks)
