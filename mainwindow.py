@@ -49,7 +49,7 @@ class MainWindow(QDialog):
             self.ui.text_label.setText(self.music_file_path)
 
             # 生成节拍序列，存储在csv文件里
-            #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
             self.load_csv()
 
             self.player.play()
