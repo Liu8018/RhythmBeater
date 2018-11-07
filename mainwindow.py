@@ -1,3 +1,4 @@
+import os
 from PyQt5.QtWidgets import QDialog, QFileDialog
 from ui_mainwindow import Ui_Dialog
 from PyQt5.QtCore import QTimer, pyqtSlot, QUrl
@@ -38,6 +39,8 @@ class MainWindow(QDialog):
                                                   "All Files (*)", options=options)
         self.player.setMedia(QMediaContent(QUrl.fromLocalFile(self.music_file_path)))
         self.ui.text_label.setText(self.music_file_path)
+
+        os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
 
     @pyqtSlot()
     def on_start_pushButton_clicked(self):
