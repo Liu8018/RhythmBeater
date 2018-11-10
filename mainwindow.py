@@ -27,7 +27,10 @@ class MainWindow(QDialog):
         self.frame_to_show = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
         self.cover = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
 
-        self.hand_detector = HandDetector()
+        # hand_detector初始化
+        self.hand_detector1 = HandDetector()
+        self.hand_detector2 = HandDetector()
+        self.hand_pos = [[],[]]
 
         # 创建计时器
         self.timer = QTimer(self)
@@ -37,6 +40,7 @@ class MainWindow(QDialog):
 
         self.music_file_path = " "
         self.player = QMediaPlayer()
+        self.music_inputed = False
         self.player_started = False
 
         self.beat_times = []
@@ -72,17 +76,22 @@ class MainWindow(QDialog):
             #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
             self.load_csv()
 
+            self.music_inputed = True
+
     @pyqtSlot()
     def on_exit_pushButton_clicked(self):
         #os.system("rm beat_times.csv")
         exit(0)
 
     def start_play(self):
-        self.player.play()
-        self.player_started = True
+        if self.music_inputed and (not self.player_started):
+            self.player.play()
+            self.player_started = True
 
-        self.start_time = cv2.getTickCount()
-        self.played_time = 0.0
+            self.start_time = cv2.getTickCount()
+            self.played_time = 0.0
+
+        pass
 
     @pyqtSlot()
     def get_frame(self):
@@ -90,24 +99,34 @@ class MainWindow(QDialog):
         _,self.frame = self.capture.read()
         self.frame = cv2.flip(self.frame, 1)
 
+        # cover初始化
         self.cover = np.zeros(shape=(self.height, self.width, 3), dtype=np.uint8)
 
         # 检测手
-        rects = self.hand_detector.detect(self.frame, "opened")
+        rects = self.hand_detector1.detect(self.frame, "opened")
         self.draw_rects(self.cover, rects, (0, 255, 0))
 
-        """if len(rects):
-            for rect in rects:
-                cv2.putText(self.cover, "opened palm", (rect[0], rect[1]), 1, 2, (0,255,0), 3)
-
-            print("number of opened palms: " + str(len(rects)))"""
-
         # 如果检测到两只张开的手掌，则开始播放
-        if len(rects) == 2:
+        if len(rects) >= 2:
             self.start_play()
 
+            self.hand_pos[0] = rects[0]
+            self.hand_pos[1] = rects[1]
+
+            self.hand_detector1.track_init(self.frame, self.hand_pos[0])
+            self.hand_detector2.track_init(self.frame, self.hand_pos[1])
+
+        self.hand_pos[0] = self.hand_detector1.track(self.frame, self.hand_pos[0])
+        self.hand_pos[1] = self.hand_detector2.track(self.frame, self.hand_pos[1])
+        if len(self.hand_pos[0]):
+            #print(self.hand_pos[0])
+            cv2.ellipse(self.cover, tuple(self.hand_pos[0]), (0, 0, 255), 2)
+        if len(self.hand_pos[1]):
+            #print(self.hand_pos[1])
+            cv2.ellipse(self.cover, tuple(self.hand_pos[1]), (0, 0, 255), 2)
+
         # 更新played_time
-        if self.player_started:
+        if self.music_inputed and self.player_started:
             self.played_time = (cv2.getTickCount() - self.start_time) / cv2.getTickFrequency()
 
             # 若到达节拍点则生成一个block
@@ -165,7 +184,10 @@ class MainWindow(QDialog):
 
             while self.blocks[i] and (self.blocks[i][0] > self.height):
                 self.blocks[i].pop(0)
+        pass
 
     def draw_rects(self, img, rects, color):
         for x1, y1, x2, y2 in rects:
             cv2.rectangle(img, (x1, y1), (x2, y2), color, 2)
+
+        pass
