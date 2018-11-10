@@ -1,5 +1,5 @@
 import os
-from PyQt5.QtWidgets import QDialog, QFileDialog, QProgressDialog
+from PyQt5.QtWidgets import QDialog, QFileDialog
 from ui_mainwindow import Ui_Dialog
 from PyQt5.QtCore import QTimer, pyqtSlot, QUrl
 from PyQt5.QtGui import QImage, QPixmap
@@ -7,6 +7,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 import numpy as np
 import cv2
 import random
+from HandDetector import HandDetector
 
 class MainWindow(QDialog):
     def __init__(self):
@@ -23,6 +24,8 @@ class MainWindow(QDialog):
         self.frame_to_show = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
         self.cover = np.zeros(shape=(self.height,self.width,3),dtype=np.uint8)
 
+        self.detector = HandDetector(self.width, self.height)
+
         # 创建计时器
         self.timer = QTimer(self)
         self.timer.setInterval(1000 / self.capture.get(cv2.CAP_PROP_FPS))
@@ -37,7 +40,9 @@ class MainWindow(QDialog):
         self.start_time = 0.0
         self.played_time = 0.0
 
-        self.blocks = [[],[],[],[]]
+        self.blocks = [[], [], [], []]
+
+        pass
 
     @pyqtSlot()
     def on_open_pushButton_clicked(self):
@@ -50,7 +55,7 @@ class MainWindow(QDialog):
             self.ui.text_label.setText(self.music_file_path)
 
             # 生成节拍序列，存储在csv文件里
-            os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
+            #os.system("python3 beat_tracker.py " + self.music_file_path + " beat_times.csv")
             self.load_csv()
 
             self.player.play()
@@ -69,6 +74,9 @@ class MainWindow(QDialog):
         # 读取一帧并左右翻转
         _,self.frame = self.capture.read()
         self.frame = cv2.flip(self.frame, 1)
+
+        # 检测手
+        self.detector.detect(self.frame)
 
         self.cover = np.zeros(shape=(self.height, self.width, 3), dtype=np.uint8)
 
@@ -94,18 +102,18 @@ class MainWindow(QDialog):
         cv2.line(self.cover, (int(self.width*3/4), 0), (int(self.width*3/4), self.height), (255, 0, 0), 2)
 
         # 画blocks
-        for i in range(4):
-            if self.blocks[i]:
-                for block in self.blocks[i]:
-                    cv2.line(self.cover, (int(self.width/4*i)+5, self.height - block),
-                                         (int(self.width/4*(i+1))-5, self.height - block),
-                                         (0,255,0),8)
+        for i, _ in enumerate(self.blocks):
+            for block in self.blocks[i]:
+                cv2.line(self.cover, (int(self.width/4*i)+5, self.height - block),
+                                     (int(self.width/4*(i+1))-5, self.height - block),
+                                     (0,255,0),8)
 
         # 叠加显示frame与cover
         self.frame_to_show = cv2.add(self.frame, self.cover)
 
         # 调整大小
         self.frame_to_show = cv2.resize(self.frame_to_show, (self.ui.label.width(), self.ui.label.height()))
+
         self.frame_to_show = cv2.cvtColor(self.frame_to_show, cv2.COLOR_BGR2RGB)
         height, width, bytesPerComponent = self.frame_to_show.shape
         bytesPerLine = 3 * width
